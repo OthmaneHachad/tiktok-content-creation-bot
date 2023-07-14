@@ -15,6 +15,7 @@ def get_reddit_comments_text(post):
     full_text = [submission.title]
     for top_level_comment in submission.comments:
         comments = top_level_comment.body
+        print(comments)
         comments = comments.split('.')
         for comment in comments:
             list_comment = comment.split(' ')
