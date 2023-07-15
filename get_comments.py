@@ -1,5 +1,6 @@
 import praw
 from google.cloud import texttospeech
+import re
 
 reddit = praw.Reddit(
     client_id='Zl5cZsjPgTr1GW1U5T64sw',
@@ -9,30 +10,36 @@ reddit = praw.Reddit(
 
 def get_reddit_comments_text(post):
     submission = reddit.submission(url=post)
+    WORD_LIMIT = 150
 
     # Replace the "MoreComments" objects with actual comments up to a certain level
     submission.comments.replace_more(limit=0)
     full_text = [submission.title]
+    compteur = 0
+
     for top_level_comment in submission.comments:
         comments = top_level_comment.body
-        print(comments)
-        comments = comments.split('.')
+
+        # parsing out typos and bad characters
+        comments = re.sub("\n", "", comments)
+        comments = re.split(r'\.\s|\.\n|\.', comments)
+
         for comment in comments:
-            list_comment = comment.split(' ')
-            if (len(full_text) + len(list_comment)) <= 160:
-                full_text += list_comment
+            compteur += len(comment.split(' '))
+            if compteur <= WORD_LIMIT and not(comment in ['', ' ']):
+                full_text.append(comment)
             else : break
 
-    return " ".join(full_text)
+    return full_text
 
 
-# 'https://www.reddit.com/r/explainlikeimfive/comments/14wytj0/eli5_how_does_nasa_ensure_that_astronauts_going/'
-text_from_reddit = get_reddit_comments_text('https://www.reddit.com/r/explainlikeimfive/comments/14wytj0/eli5_how_does_nasa_ensure_that_astronauts_going/')
 
 
 
 
 def comment_to_speach(text_to_convert):
+
+    text_to_convert = " ".join(text_to_convert)
 
     # Instantiates a client
     client = texttospeech.TextToSpeechClient()
@@ -63,4 +70,4 @@ def comment_to_speach(text_to_convert):
 
 
 
-comment_to_speach(text_from_reddit)
+print(get_reddit_comments_text('https://www.reddit.com/r/explainlikeimfive/comments/14wytj0/eli5_how_does_nasa_ensure_that_astronauts_going/'))
