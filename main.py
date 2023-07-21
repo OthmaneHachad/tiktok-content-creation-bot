@@ -1,10 +1,14 @@
+import re
 import praw
 from google.cloud import texttospeech
-import speech_recognition as sr
 from pydub import AudioSegment
+import subprocess
+from random import randint
+
 import get_comments
 import create_subt
-import re
+import edit_video
+
 
 
 reddit = praw.Reddit(
@@ -14,22 +18,17 @@ reddit = praw.Reddit(
 )
 
 if __name__ == "__main__":
-    # 'https://www.reddit.com/r/explainlikeimfive/comments/14wytj0/eli5_how_does_nasa_ensure_that_astronauts_going/'
-    text_from_reddit = get_comments.get_reddit_comments_text('https://www.reddit.com/r/explainlikeimfive/comments/14wytj0/eli5_how_does_nasa_ensure_that_astronauts_going/')
-    post_audio = get_comments.comment_to_speach(text_from_reddit)
+    post_path = 'https://www.reddit.com/r/explainlikeimfive/comments/14wytj0/eli5_how_does_nasa_ensure_that_astronauts_going/'
 
-    #print(text_from_reddit)
-    #print(" \n ==================== \n")
+    dialogue_entries = get_comments.get_reddit_comments(post_path)["comments"]
+    subtitles = create_subt.create_subtitles_file("subtitles.srt", dialogue_entries)["subtitles_path"]
+    
+    minute_extract = edit_video.cut_video('minecraft_1.mp4')["output_video_path"]
+    gameplay = edit_video.merge_audio_video(minute_extract, "audio_files/full_speech.mp3")["output_video_path"]
+    edit_video.burn_subtitles(gameplay, subtitles)
 
-    # Convert mp3 file to wav                                                       
-    audio = AudioSegment.from_mp3("post_audio.mp3")
-    audio.export("post_audio.wav", format="wav")
-    r = sr.Recognizer()
+    
 
-    chunks, chunks_length = create_subt.divide_chunks(text_from_reddit)
 
-    #print(chunks)
-
-    create_subt.create_ass_file("subtitles.ass", chunks, chunks_length)
 
 
