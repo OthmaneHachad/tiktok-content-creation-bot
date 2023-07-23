@@ -1,7 +1,7 @@
 
 # tiktok-content-creation-bot
 
-![example : ](example.gif)
+![example](https://github.com/OthmaneHachad/tiktok-content-creation-bot/assets/75754374/3e35efd3-0700-4e96-bac6-ee494ea2564a)
 
 
 
