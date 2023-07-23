@@ -3,10 +3,6 @@
 
 ![example](https://github.com/OthmaneHachad/tiktok-content-creation-bot/assets/75754374/3e35efd3-0700-4e96-bac6-ee494ea2564a)
 
-test test
-
-
-
 This project automates the creation of reddit post reading with a background gameplay that everybody loves on Tiktok. 
 
 The service will be free of charge and served on a website.
