@@ -11,3 +11,6 @@
 /tiktok-reddit-bot/.*
 /ignore/*
 /DS_Store
+/svelte-content-creation-app/*
+/go.*
+
