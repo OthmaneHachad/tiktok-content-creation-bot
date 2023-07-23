@@ -13,4 +13,7 @@
 /DS_Store
 /svelte-content-creation-app/*
 /go.*
+/subtitles.srt
+/.DS_Store
+/example.gif
 
