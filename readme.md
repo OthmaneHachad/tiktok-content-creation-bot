@@ -27,3 +27,7 @@ More technically, the goal is to transport all of the computation (which is the 
 
 **Server:** GO
 
+## Roadmap
+ - Making the video editing client side (WASM)
+ - Adding the option to enable Hardware Acceleration
+

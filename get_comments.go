@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"log"
 	"io/ioutil"
+	"time"
 	"strings"
 	"github.com/vartanbeno/go-reddit/v2/reddit"
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
@@ -32,7 +33,7 @@ func RetrieveSubredditAndPostId(link string) (string, string ,error) {
 	return pathParts[2], pathParts[4], nil
 }
 
-func GetComments(subreddit_name string, id string) (string, string, []string, error){
+func GetComments(subreddit_name string, id string, voice string) (string, string, []string, error){
 
 	client, err := reddit.NewReadonlyClient()
 	if err != nil {
@@ -58,7 +59,10 @@ func GetComments(subreddit_name string, id string) (string, string, []string, er
 	}
 
 	// synthesize the speech and write it to audio file
-	speech := SynthesizeSpeech(full_text)
+	speechStartTime := time.Now()
+	speech := SynthesizeSpeech(full_text, voice)
+	speechElapsedTime := time.Since(speechStartTime)
+	fmt.Printf("The Speech Synthesize took %s", speechElapsedTime)
 
 	// The resp's AudioContent is binary.
 	filename := "speech.mp3"
@@ -70,11 +74,11 @@ func GetComments(subreddit_name string, id string) (string, string, []string, er
 	}
 	fmt.Printf("Audio content written to file: %v\n", file_path)
 
-	return filename, full_text, commentBodies, nil
+	return file_path, full_text, commentBodies, nil
 
 }
 
-func SynthesizeSpeech(text string) (*texttospeechpb.SynthesizeSpeechResponse){
+func SynthesizeSpeech(text string, voice string) (*texttospeechpb.SynthesizeSpeechResponse){
 	// Instantiates a client.
 	ctx := context.Background()
 
@@ -116,8 +120,6 @@ func splitEveryNWords(s []string, n int) ([]string) {
 	
 	for _, sentence := range s {
 		words := strings.Split(sentence, " ")
-		fmt.Print("this is words  ")
-		fmt.Println(words)
 		var compteur int = 0  
 		for _,word := range words {
 			fmt.Println(word)
@@ -140,32 +142,39 @@ func splitEveryNWords(s []string, n int) ([]string) {
 
 
 func main() {
+	startTime := time.Now()
+
+
 	subreddit, postID, err_retrieve := RetrieveSubredditAndPostId("https://www.reddit.com/r/explainlikeimfive/comments/14wytj0/eli5_how_does_nasa_ensure_that_astronauts_going/")
 	if err_retrieve != nil {
 		log.Fatal(err_retrieve)
 	}
-	speeche, _, comments, err := GetComments(subreddit, postID)
+	speeche, _, comments, err := GetComments(subreddit, postID, "en-US")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(comments)
-	fmt.Println("==========================")
-
 	parsed_comments := splitEveryNWords(comments, 3)
-
 	subtitles_path, err := createSubtitlesFile("subtitles.srt", parsed_comments)
-	fmt.Println(subtitles_path)
-	//fmt.Println("\n \n" + text)
-	//fmt.Println(speech)
 
-	video_extract_path, _ := CutVideoExtract("minecraft_1.mp4")
+	gameplay_v_a, err := CutVideoAddAudio("minecraft_1.mp4", speeche)
+	fmt.Println(err)
+	
+	final_tiktok_video, err := BurnSubtitles(gameplay_v_a, subtitles_path)
+	fmt.Println(final_tiktok_video)
+	fmt.Println(err)
+
+
+	/*video_extract_path, _ := CutVideoExtract("minecraft_1.mp4")
 	fmt.Println(video_extract_path)
 	fmt.Println(err)
 	video_audio_extract_path, err := MergeVideoAudio(video_extract_path, speeche)
 	fmt.Println(video_audio_extract_path)
 	fmt.Println(err)
-	final_tiktok_video, err := BurnSubtitles(video_audio_extract_path, "subtitles.srt")
+	final_tiktok_video, err := BurnSubtitles(video_audio_extract_path, subtitles_path)
 	fmt.Println(final_tiktok_video)
-	fmt.Println(err)
+	fmt.Println(err)*/
+
+	elapsedTime := time.Since(startTime)
+	fmt.Printf("The creation of the Tiktok Video took %s", elapsedTime)
 }

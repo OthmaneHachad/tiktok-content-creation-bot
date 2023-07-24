@@ -72,9 +72,35 @@ func BurnSubtitles(gameplay_v_a string, subtitles_path string) (string, error) {
 	err := cmd.Run()
 	if err != nil {
 		// print the stderr or return it in your error message for more details
-		fmt.Println("Error:", stderr.String())
+		fmt.Println("Error:"+ stderr.String())
 		return "Command execution Failed (BurnSubtitles)", err
 	}
 
 	return "final_tiktok_video.mp4", nil
+}
+
+
+// CreateTikTokVideo creates the desired TikTok video by combining operations.
+func CutVideoAddAudio(videoPath, audioPath string) (string, error) {
+	videoLength := 34 * 60 // video is 34 minutes long
+	randMinute := rand.Intn(videoLength)
+
+	h, r := randMinute/3600, randMinute%3600
+	m, s := r/60, r%60
+	timestamp := fmt.Sprintf("%d:%d:%d", h, m, s)
+
+	output := "gameplay_w_video_audio.mp4"
+	// Combined ffmpeg command
+	// ffmpeg -y -ss [TIMESTAMP] -i [video_path] -i [audio_path] -t 00:01:00 -c:v copy -c:a copy [output_path] 630:1120
+	cmd := exec.Command("ffmpeg", "-y", "-ss", timestamp, "-i", videoPath, "-i", audioPath, "-t", "00:01:00", "-vf", "scale=630:1120", "-c:a", "copy", output)
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		fmt.Println("Error:", stderr.String())
+		return "Command execution failed", err
+	}
+
+	return output, nil
 }
