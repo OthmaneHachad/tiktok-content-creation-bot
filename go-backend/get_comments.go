@@ -66,7 +66,7 @@ func GetComments(subreddit_name string, id string, voice string) (string, string
 
 	// The resp's AudioContent is binary.
 	filename := "speech.mp3"
-	var file_path string = fmt.Sprintf("audio_files/%s", filename)
+	var file_path string = fmt.Sprintf("../audio_files/%s", filename)
 	outcome := ioutil.WriteFile(file_path, speech.AudioContent, 0644)
 
 	if outcome != nil {
@@ -155,26 +155,18 @@ func main() {
 	}
 
 	parsed_comments := splitEveryNWords(comments, 3)
-	subtitles_path, err := createSubtitlesFile("subtitles.srt", parsed_comments)
+	subtitles_path, err := createSubtitlesFile("../merging_files/subtitles.srt", parsed_comments)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	gameplay_v_a, err := CutVideoAddAudio("minecraft_1.mp4", speeche)
-	fmt.Println(err)
-	
-	final_tiktok_video, err := BurnSubtitles(gameplay_v_a, subtitles_path)
-	fmt.Println(final_tiktok_video)
-	fmt.Println(err)
+	gameplay_v_a, err := CutVideoAddAudio("../merging_files/minecraft_1.mp4", speeche)
+	if err != nil {
+		log.Fatal(err)
+		fmt.Println("(CutVideoAddAudio)")
+	}
 
-
-	/*video_extract_path, _ := CutVideoExtract("minecraft_1.mp4")
-	fmt.Println(video_extract_path)
-	fmt.Println(err)
-	video_audio_extract_path, err := MergeVideoAudio(video_extract_path, speeche)
-	fmt.Println(video_audio_extract_path)
-	fmt.Println(err)
-	final_tiktok_video, err := BurnSubtitles(video_audio_extract_path, subtitles_path)
-	fmt.Println(final_tiktok_video)
-	fmt.Println(err)*/
-
+	fmt.Println(BurnSubtitles(gameplay_v_a, subtitles_path))
 	elapsedTime := time.Since(startTime)
 	fmt.Printf("The creation of the Tiktok Video took %s", elapsedTime)
 }

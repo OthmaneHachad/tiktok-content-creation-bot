@@ -1,21 +1,15 @@
 /audio_files/*
 /tiktok-reddit-bot-key.json
 /__pycache__/*
-/cropped_gameplay.mp4
-/gameplay_w_audio_video.mp4
-/final_tiktok_video.mp4
-/minecraft_*.mp4
-/tiktok_video.mp4
 /.metadata/
-/tiktok-reddit-bot/bin/
-/tiktok-reddit-bot/.*
 /ignore/*
 /DS_Store
-/svelte-content-creation-app/*
-/go.*
+/go-backend/go.*
 /subtitles.srt
 /.DS_Store
 /example.gif
-/gameplay_w_video_audio.mp4
-/server.go
+/svelte-app/*
+/audio_files/*
+/merging_files/*
+
 
