@@ -40,9 +40,9 @@ func createTiktokVideo(context *gin.Context, link string, voice string, gameplay
 	}
 
 	parsed_comments := splitEveryNWords(comments, 3)
-	subtitles_path, err := createSubtitlesFile("./merging_files/subtitles.srt", parsed_comments)
+	subtitles_path, err := createSubtitlesFile("../merging_files/subtitles.srt", parsed_comments)
 
-	gameplay_v_a, err := CutVideoAddAudio("./merging_files/minecraft_1.mp4", speeche)
+	gameplay_v_a, err := CutVideoAddAudio("../merging_files/minecraft_1.mp4", speeche)
 	fmt.Println(err)
 
 	fmt.Println(BurnSubtitles(gameplay_v_a, subtitles_path))
@@ -65,18 +65,20 @@ func CreateVideoHandler(context *gin.Context) {
 		return
 	}
 
-	createTiktokVideo(context, input.Link, input.Voice, "./merging_files/minecraft_1.mp4")
+	createTiktokVideo(context, input.Link, input.Voice, "../merging_files/minecraft_1.mp4")
 }
 
 
-func test() {
+func main() {
 	router := gin.Default()
 
 	// Serve the static Svelte files
-	router.Static("/static", "./svelte-app/public/build")
+	router.Static("/build", "../svelte-app/public/build")
+	router.Static("/global.css", "../svelte-app/public/global.css")
+	router.Static("/favicon.png", "../svelte-app/public/favicon.png")
 
 	router.GET("/", func(c *gin.Context) {
-		c.File("./svelte-app/public/index.html")
+		c.File("../svelte-app/public/index.html")
 	})
 
 	router.POST("/createVideo", CreateVideoHandler)

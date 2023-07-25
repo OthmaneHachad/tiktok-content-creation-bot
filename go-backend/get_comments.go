@@ -141,7 +141,7 @@ func splitEveryNWords(s []string, n int) ([]string) {
 }
 
 
-func main() {
+func test() {
 	startTime := time.Now()
 
 
