@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 	"net/http"
 	"os"
 	"github.com/joho/godotenv"
@@ -28,8 +29,46 @@ var (
 )
 
 
+func GeneratePresignedURL(objectKey string) (string, error) {
+    // Initialize AWS credentials from environment variables.
+	// Make sure to set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION environment variables before running this program.
+	// Load .env file
+	err := godotenv.Load() // This will load the .env file from the same directory by default.
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
-func UploadProcessedVideoS3(video_local_path string, video_uuid string) (){
+	// Retrieve environment variables after loading the .env file
+	accessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
+	secretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	region = os.Getenv("AWS_REGION")
+
+	session, err := session.NewSession(&aws.Config{
+		Region:      aws.String(region),
+		Credentials: credentials.NewStaticCredentials(accessKeyID, secretAccessKey, ""),
+	})
+
+	if err != nil {
+		fmt.Println("Error creating session:", err)
+		return "", err
+	}
+	S3_client := s3.New(session) 
+
+    // Set the expiration time for the URL. For this example, the link will be valid for 15 minutes.
+    req, _ := S3_client.GetObjectRequest(&s3.GetObjectInput{
+        Bucket: aws.String(S3Bucket),
+        Key:    aws.String(objectKey),
+    })
+    urlStr, err := req.Presign(15 * time.Minute) // 15 minutes pre-signed url
+
+    if err != nil {
+        return "", err
+    }
+
+    return urlStr, nil
+}
+
+func UploadProcessedVideoS3(video_local_path string, video_uuid string) (string){
 
 	// Initialize AWS credentials from environment variables.
 	// Make sure to set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION environment variables before running this program.
@@ -51,7 +90,7 @@ func UploadProcessedVideoS3(video_local_path string, video_uuid string) (){
 
 	if err != nil {
 		fmt.Println("Error creating session:", err)
-		return
+		return ""
 	}
 	S3_client := s3.New(session) 
 
@@ -59,23 +98,26 @@ func UploadProcessedVideoS3(video_local_path string, video_uuid string) (){
 	file, err := os.Open(video_local_path)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
-		return
+		return ""
 	}
 	defer file.Close()
 
+	objectKey := fmt.Sprintf("processedVideos/%s.mp4", video_uuid)
 	// Upload the file to S3
 	_, err = S3_client.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(S3Bucket),
-		Key:    aws.String(fmt.Sprintf("processedVideos/%s.mp4", video_uuid)),
+		Key:    aws.String(objectKey),
 		Body:   file,
 	})
 
 	if err != nil {
 		fmt.Println("Error uploading to S3:", err)
-		return
+		return ""
 	}
 
 	fmt.Println("Successfully uploaded file to", S3Bucket)
+
+	return objectKey
 }
 
 
@@ -119,14 +161,20 @@ func createTiktokVideo(context *gin.Context, link string, gameplay_path string) 
 	// creating a video UUID
 	processed_video_uuid := uuid.New()
 
-	UploadProcessedVideoS3(video_local_path, processed_video_uuid.String())
+	objectKey := UploadProcessedVideoS3(video_local_path, processed_video_uuid.String())
 	// https://tiktok-processed-videos.s3.eu-west-3.amazonaws.com/processedVideos/526bd3b3-e073-4e50-8e9f-e945e79d6475.mp4
+
+	// here we generate the pre-signed url
+	// to be able to embed the video inside the html
+	presigned_url, _ := GeneratePresignedURL(objectKey)
+
+	// video_link : fmt.Sprintf("https://%s.s3.%s.amazonaws.com/processedVideos/%s.mp4", S3Bucket, region, processed_video_uuid),
 
 	context.IndentedJSON(http.StatusOK, gin.H{
 		"subreddit_post_link" : subreddit_name,
 		"TTS_voice" : "en-US",
 		"gameplay_extracted_from" : gameplay_path,
-		"video_link": fmt.Sprintf("https://%s.s3.%s.amazonaws.com/processedVideos/%s.mp4", S3Bucket, region, processed_video_uuid),
+		"video_link": presigned_url,
 		"processed_video_uuid": processed_video_uuid,
 	})
 }

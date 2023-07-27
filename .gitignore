@@ -8,9 +8,15 @@
 /subtitles.srt
 /.DS_Store
 /example.gif
-/svelte-app/*
 /audio_files/*
 /merging_files/*
 /go-backend/.env
+/svelte-app/node_modules/
+/svelte-app/public/
+/svelte-app/scripts
+/svelte-app/package*
+/svelte-app/README.md 
+/svelte-app/rollup.config.js
+/svelte-app.DS_Store
 
 
