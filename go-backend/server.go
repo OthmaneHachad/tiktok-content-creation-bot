@@ -4,18 +4,82 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
+	"os"
+	"github.com/joho/godotenv"
+	"github.com/google/uuid"
 	"github.com/gin-gonic/gin"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 type ClientVideoCreationInput struct {
 	Link string `form:"link" binding:"required"`
-	Voice string `form:"link" binding:"required"`
+	Gameplay string `form:"link" binding:"required"`
+}
+
+// Declare variables, not constants, for values retrieved from environment variables
+var (
+	accessKeyID     string
+	secretAccessKey string
+	region          string
+	S3Bucket        = "tiktok-processed-videos"
+)
+
+
+
+func UploadProcessedVideoS3(video_local_path string, video_uuid string) (){
+
+	// Initialize AWS credentials from environment variables.
+	// Make sure to set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION environment variables before running this program.
+	// Load .env file
+	err := godotenv.Load() // This will load the .env file from the same directory by default.
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	// Retrieve environment variables after loading the .env file
+	accessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
+	secretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	region = os.Getenv("AWS_REGION")
+
+	session, err := session.NewSession(&aws.Config{
+		Region:      aws.String(region),
+		Credentials: credentials.NewStaticCredentials(accessKeyID, secretAccessKey, ""),
+	})
+
+	if err != nil {
+		fmt.Println("Error creating session:", err)
+		return
+	}
+	S3_client := s3.New(session) 
+
+	// Open the file for use
+	file, err := os.Open(video_local_path)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return
+	}
+	defer file.Close()
+
+	// Upload the file to S3
+	_, err = S3_client.PutObject(&s3.PutObjectInput{
+		Bucket: aws.String(S3Bucket),
+		Key:    aws.String(fmt.Sprintf("processedVideos/%s.mp4", video_uuid)),
+		Body:   file,
+	})
+
+	if err != nil {
+		fmt.Println("Error uploading to S3:", err)
+		return
+	}
+
+	fmt.Println("Successfully uploaded file to", S3Bucket)
 }
 
 
-
-func createTiktokVideo(context *gin.Context, link string, voice string, gameplay_path string) {
+func createTiktokVideo(context *gin.Context, link string, gameplay_path string) {
 
 	/* 
 		Args :
@@ -28,32 +92,42 @@ func createTiktokVideo(context *gin.Context, link string, voice string, gameplay
 			- all of the inputs used (because some of them are unknown to the user, since not provided)
 	*/
 
-	startTime := time.Now()
-
-	subreddit_name, postID, err_retrieve := RetrieveSubredditAndPostId("https://www.reddit.com/r/explainlikeimfive/comments/14wytj0/eli5_how_does_nasa_ensure_that_astronauts_going/")
+	subreddit_name, postID, err_retrieve := RetrieveSubredditAndPostId(link)
 	if err_retrieve != nil {
 		log.Fatal(err_retrieve)
 	}
-	speeche, _, comments, err := GetComments(subreddit_name, postID, voice)
+	speeche, _, comments, err := GetComments(subreddit_name, postID, "en-US")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	parsed_comments := splitEveryNWords(comments, 3)
 	subtitles_path, err := createSubtitlesFile("../merging_files/subtitles.srt", parsed_comments)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	gameplay_v_a, err := CutVideoAddAudio("../merging_files/minecraft_1.mp4", speeche)
-	fmt.Println(err)
+	gameplay_v_a, err := CutVideoAddAudio(fmt.Sprintf("../merging_files/%s", gameplay_path), speeche)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	fmt.Println(BurnSubtitles(gameplay_v_a, subtitles_path))
-	elapsedTime := time.Since(startTime)
-	fmt.Printf("The creation of the Tiktok Video took %s", elapsedTime)
+	video_local_path, err := BurnSubtitles(gameplay_v_a, subtitles_path)
 
+	fmt.Println("Now starting the Upload to the s3 bucket")
+
+	// creating a video UUID
+	processed_video_uuid := uuid.New()
+
+	UploadProcessedVideoS3(video_local_path, processed_video_uuid.String())
+	// https://tiktok-processed-videos.s3.eu-west-3.amazonaws.com/processedVideos/526bd3b3-e073-4e50-8e9f-e945e79d6475.mp4
 
 	context.IndentedJSON(http.StatusOK, gin.H{
 		"subreddit_post_link" : subreddit_name,
-		"TTS_voice" : voice,
+		"TTS_voice" : "en-US",
 		"gameplay_extracted_from" : gameplay_path,
+		"video_link": fmt.Sprintf("https://%s.s3.%s.amazonaws.com/processedVideos/%s.mp4", S3Bucket, region, processed_video_uuid),
+		"processed_video_uuid": processed_video_uuid,
 	})
 }
 
@@ -65,7 +139,7 @@ func CreateVideoHandler(context *gin.Context) {
 		return
 	}
 
-	createTiktokVideo(context, input.Link, input.Voice, "../merging_files/minecraft_1.mp4")
+	createTiktokVideo(context, input.Link, fmt.Sprintf("../merging_files/%s.mp4", input.Gameplay))
 }
 
 
@@ -73,7 +147,7 @@ func main() {
 	router := gin.Default()
 
 	// Serve the static Svelte files
-	router.Static("/build", "../svelte-app/public/build")
+	router.Static("/build", "../svelte-app/public/build/")
 	router.Static("/global.css", "../svelte-app/public/global.css")
 	router.Static("/favicon.png", "../svelte-app/public/favicon.png")
 
