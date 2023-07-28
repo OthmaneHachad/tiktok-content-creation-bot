@@ -18,6 +18,7 @@ import (
 type ClientVideoCreationInput struct {
 	Link string `form:"link" binding:"required"`
 	Gameplay string `form:"link" binding:"required"`
+	Voice string `form:"link" binding:"required"`
 }
 
 // Declare variables, not constants, for values retrieved from environment variables
@@ -121,7 +122,7 @@ func UploadProcessedVideoS3(video_local_path string, video_uuid string) (string)
 }
 
 
-func createTiktokVideo(context *gin.Context, link string, gameplay_path string) {
+func createTiktokVideo(context *gin.Context, link string, voice string, gameplay_path string) {
 
 	/* 
 		Args :
@@ -138,7 +139,7 @@ func createTiktokVideo(context *gin.Context, link string, gameplay_path string) 
 	if err_retrieve != nil {
 		log.Fatal(err_retrieve)
 	}
-	speeche, _, comments, err := GetComments(subreddit_name, postID, "en-US")
+	speeche, _, comments, err := GetComments(subreddit_name, postID, voice)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -172,7 +173,7 @@ func createTiktokVideo(context *gin.Context, link string, gameplay_path string) 
 
 	context.IndentedJSON(http.StatusOK, gin.H{
 		"subreddit_post_link" : subreddit_name,
-		"TTS_voice" : "en-US",
+		"TTS_voice" : voice,
 		"gameplay_extracted_from" : gameplay_path,
 		"video_link": presigned_url,
 		"processed_video_uuid": processed_video_uuid,
@@ -187,11 +188,15 @@ func CreateVideoHandler(context *gin.Context) {
 		return
 	}
 
-	createTiktokVideo(context, input.Link, fmt.Sprintf("../merging_files/%s.mp4", input.Gameplay))
+	createTiktokVideo(context, input.Link, input.Voice, fmt.Sprintf("../merging_files/%s.mp4", input.Gameplay))
 }
 
 
 func main() {
+	
+	//  https://www.reddit.com/r/explainlikeimfive/comments/14wytj0/eli5_how_does_nasa_ensure_that_astronauts_going/
+
+
 	router := gin.Default()
 
 	// Serve the static Svelte files

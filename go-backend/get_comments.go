@@ -14,6 +14,17 @@ import (
         "cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
 )
 
+var voiceMaps = map[string][2]string{
+	"English - UK (Male)" : {"en-GB","en-GB-News-J"},
+	"English - UK (Female)" : {"en-GB","en-GB-Neural2-F"},
+	"English - US (Male)" : {"en-US", "en-US-Wavenet-D"},
+	"English - US (Female)" : {"en-US", "en-US-Wavenet-E"},
+	"English - INDIA (Male)" : {"en-IN", "en-IN-Wavenet-B"},
+	"English - INDIA (Female)" : {"en-IN", "en-IN-Wavenet-D"},
+	"English - AUSTRALIA (Male)" : {"en-AU", "en-AU-Neural2-B"},
+	"English - AUSTRALIA (Female)" : {"en-AU", "en-AU-Neural2-C"},
+
+}
 
 
 func RetrieveSubredditAndPostId(link string) (string, string ,error) {
@@ -96,8 +107,8 @@ func SynthesizeSpeech(text string, voice string) (*texttospeechpb.SynthesizeSpee
 					InputSource: &texttospeechpb.SynthesisInput_Text{Text: text},
 			},
 			Voice: &texttospeechpb.VoiceSelectionParams{
-					LanguageCode: "en-US",
-					SsmlGender:   texttospeechpb.SsmlVoiceGender_MALE,
+					LanguageCode: voiceMaps[voice][0],
+					Name: voiceMaps[voice][1],
 			},
 			// Select the type of audio file you want returned.
 			AudioConfig: &texttospeechpb.AudioConfig{
@@ -138,35 +149,4 @@ func splitEveryNWords(s []string, n int) ([]string) {
 	
 
 	return chunks
-}
-
-
-func test() {
-	startTime := time.Now()
-
-
-	subreddit, postID, err_retrieve := RetrieveSubredditAndPostId("https://www.reddit.com/r/explainlikeimfive/comments/14wytj0/eli5_how_does_nasa_ensure_that_astronauts_going/")
-	if err_retrieve != nil {
-		log.Fatal(err_retrieve)
-	}
-	speeche, _, comments, err := GetComments(subreddit, postID, "en-US")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	parsed_comments := splitEveryNWords(comments, 3)
-	subtitles_path, err := createSubtitlesFile("../merging_files/subtitles.srt", parsed_comments)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	gameplay_v_a, err := CutVideoAddAudio("../merging_files/minecraft_1.mp4", speeche)
-	if err != nil {
-		log.Fatal(err)
-		fmt.Println("(CutVideoAddAudio)")
-	}
-
-	fmt.Println(BurnSubtitles(gameplay_v_a, subtitles_path))
-	elapsedTime := time.Since(startTime)
-	fmt.Printf("The creation of the Tiktok Video took %s", elapsedTime)
 }

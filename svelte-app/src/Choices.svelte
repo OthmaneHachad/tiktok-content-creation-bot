@@ -1,8 +1,10 @@
 <script>
 
-    export let gameplayOptions = ["minecraft", "trackmania"] ;
+    export let gameplayOptions = ["minecraft", "trackmania", "subway-surfers"] ;
+    export let voiceOptions = ["English - UK (Male)", "English - UK (Female)", "English - US (Male)" , "English - US (Female)" , "English - INDIA (Male)" , "English - INDIA (Female)" , "English - AUSTRALIA (Male)" , "English - AUSTRALIA (Female)" ,]
 
     let gameplayType = '';
+    let voiceType = '' ;
     let subredditLink = '' ;
 
     let isProcessing ;
@@ -12,6 +14,11 @@
     function handleChangeGameplay(event) {
         gameplayType = event.target.value ;
         console.log("gameplay type: ", gameplayType)
+
+    }
+    function handleChangeVoice(event) {
+        voiceType = event.target.value ;
+        console.log("voice type: ", gameplayType)
 
     }
 
@@ -27,7 +34,8 @@
             },
             body: JSON.stringify({
                 link: subredditLink,
-                gameplay: gameplayType
+                gameplay: gameplayType,
+                voice: voiceType
             })
         }).then(response => response.json())
         .then(data => {
@@ -48,7 +56,7 @@
         setTimeout(() => {
             const videoContainer = document.getElementById('videoContainer');
             videoContainer.innerHTML = `
-                <video width="320" height="240" controls>
+                <video width="360" height="640" controls>
                     <source src="${processedData.video_link}" type="video/mp4">
                     Your browser does not support the video tag.
                 </video> 
@@ -63,13 +71,21 @@
     <label for="subredditLink">Link:</label>
     <input id="link" bind:value={subredditLink} type="text" placeholder="Enter subreddit link" />
 
-    <button on:click={handleSubmit}>Submit</button>
-
     <select bind:value={gameplayType} on:change={handleChangeGameplay}>
         {#each gameplayOptions as option}
             <option value={option}>{option}</option>
         {/each}
     </select>
+
+    <select bind:value={voiceType} on:change={handleChangeVoice}>
+        {#each voiceOptions as option}
+            <option value={option}>{option}</option>
+        {/each}
+    </select>
+
+    <button on:click={handleSubmit}>Submit</button>
+
+    
 </div>
 {#if isProcessing == true}
     <div>
