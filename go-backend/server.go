@@ -103,7 +103,8 @@ func UploadProcessedVideoS3(video_local_path string, video_uuid string) (string)
 	}
 	defer file.Close()
 
-	objectKey := fmt.Sprintf("processedVideos/%s.mp4", video_uuid)
+	suffixe := fmt.Sprintf("processedVideos-%s", video_uuid)
+	objectKey := fmt.Sprintf("processedVideos/%s.mp4", suffixe)
 	// Upload the file to S3
 	_, err = S3_client.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(S3Bucket),
@@ -203,6 +204,7 @@ func main() {
 	router.Static("/build", "../svelte-app/public/build/")
 	router.Static("/global.css", "../svelte-app/public/global.css")
 	router.Static("/favicon.png", "../svelte-app/public/favicon.png")
+	router.Static("/assets", "../svelte-app/public/assets/")
 
 	router.GET("/", func(c *gin.Context) {
 		c.File("../svelte-app/public/index.html")
