@@ -1,17 +1,17 @@
 package main
 
-
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"log"
 	"io/ioutil"
-	"time"
+	"log"
+	"net/url"
 	"strings"
-	"github.com/vartanbeno/go-reddit/v2/reddit"
+	"time"
+
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
-        "cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
+	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
+	"github.com/vartanbeno/go-reddit/v2/reddit"
 )
 
 var voiceMaps = map[string][2]string{
@@ -46,29 +46,51 @@ func RetrieveSubredditAndPostId(link string) (string, string ,error) {
 
 func GetComments(subreddit_name string, id string, voice string) (string, string, []string, error){
 
-	client, err := reddit.NewReadonlyClient()
+	client, _ := reddit.NewReadonlyClient()
+	comments, _, err := client.Post.Get(context.Background(), id)
 	if err != nil {
 		return "", "", nil, err
 	}
 
-	comments, _, err := client.Post.Get(context.Background(), id)
 	var commentBodies []string
 	commentBodies = []string{
 		comments.Post.Title,
 	}
 
 	var full_text string 
-	full_text = comments.Post.Title
+	var comment_text string
+	comment_text = comments.Post.Title
+	
 	for _, comment := range comments.Comments {
-		if !(strings.Count((full_text + comment.Body), " ") > 160) {
-			commentBodie2Add := comment.Body
-			commentBodies = append(commentBodies, commentBodie2Add)
-			full_text = full_text + comment.Body
-		} else {
-			break
+
+		sentences := SplitCommentIntoSentences(comment.Body)
+
+		for _, sentence := range sentences {
+
+			// Trim spaces and check if the sentence is not empty
+			trimmedSentence := strings.TrimSpace(sentence)
+			if trimmedSentence == "" {
+				continue
+			}
+
+			if !(strings.Count((comment_text + sentence), " ") > 160) {
+				commentBodie2Add := sentence + "."
+				commentBodies = append(commentBodies, commentBodie2Add)
+				comment_text = comment_text + " " + sentence + "."
+			} else {
+				break
+			}
 		}
 	}
+	
 
+	fmt.Println("starting the parsing here...")
+
+	// ARRANGE THIS, WAS POINTLESS
+	full_text, commentBodies = cleanUpData(comment_text, commentBodies)
+	
+	fmt.Println("\n \n" + full_text)
+	fmt.Println("starting the voice synthesize here...")
 	// synthesize the speech and write it to audio file
 	speechStartTime := time.Now()
 	speech := SynthesizeSpeech(full_text, voice)
@@ -113,6 +135,7 @@ func SynthesizeSpeech(text string, voice string) (*texttospeechpb.SynthesizeSpee
 			// Select the type of audio file you want returned.
 			AudioConfig: &texttospeechpb.AudioConfig{
 					AudioEncoding: texttospeechpb.AudioEncoding_MP3,
+					SpeakingRate: 1.00, // Default is 1.0
 			},
 	}
 
@@ -126,27 +149,74 @@ func SynthesizeSpeech(text string, voice string) (*texttospeechpb.SynthesizeSpee
 
 }
 
-func splitEveryNWords(s []string, n int) ([]string) {
+func SplitCommentIntoSentences(comment string) ([]string) {
+	// here we input in parameter Comment.Body
+	comment_sentences := strings.Split(comment, ".")
+	return comment_sentences
+
+}
+
+func splitEveryNWords(s []string, n int) []string {
 	var chunks []string
-	
+
 	for _, sentence := range s {
 		words := strings.Split(sentence, " ")
-		var compteur int = 0  
-		for _,word := range words {
-			fmt.Println(word)
-			if compteur+3 >= len(words){
-				joined := strings.Join(words[compteur:], " ")
-				//fmt.Println(joined)
-				chunks = append(chunks, joined)
-				break
-			} else {
-				joined := strings.Join(words[compteur:compteur+3], " ")
-				chunks = append(chunks, joined)
-				compteur = compteur + 3
+		var currentChunk []string
+		for _, word := range words {
+			// Add the word to the current chunk
+			currentChunk = append(currentChunk, word)
+
+			// If the word contains a special character or if the chunk size reaches n, append to chunks
+			if strings.ContainsAny(word, ":;,.?!") || len(currentChunk) == n {
+				chunks = append(chunks, strings.Join(currentChunk, " "))
+				currentChunk = nil // Reset the current chunk
 			}
 		}
+		// If there's any remaining words in the current chunk, append it to chunks
+		if len(currentChunk) > 0 {
+			chunks = append(chunks, strings.Join(currentChunk, " "))
+		}
 	}
-	
 
 	return chunks
 }
+
+
+func cleanUpData(text string, commentBodies []string) (string, []string) {
+    unwantedPairs := map[rune]rune{
+        '[': ']',
+        '{': '}',
+        '(': ')',
+        '\\': '\\',
+        '*': '*',
+        // Add any other pairs of unwanted characters here
+    }
+
+    // Clean the main text (string) first
+    cleanedText := removeEnclosedText(text, unwantedPairs)
+
+    // Now, clean each individual comment in the slice
+    cleanedComments := make([]string, len(commentBodies))
+    for i, comment := range commentBodies {
+        cleanedComments[i] = removeEnclosedText(comment, unwantedPairs)
+    }
+
+    return cleanedText, cleanedComments
+}
+
+// Helper function to remove enclosed text
+func removeEnclosedText(text string, unwantedPairs map[rune]rune) string {
+    for startChar, endChar := range unwantedPairs {
+        for {
+            startIndex := strings.IndexRune(text, startChar)
+            endIndex := strings.IndexRune(text, endChar)
+            if startIndex == -1 || endIndex == -1 || endIndex < startIndex {
+                break
+            }
+            text = text[:startIndex] + text[endIndex+1:]
+        }
+    }
+    return text
+}
+
+

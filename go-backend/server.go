@@ -3,16 +3,18 @@ package main
 import (
 	"fmt"
 	"log"
-	"time"
 	"net/http"
 	"os"
-	"github.com/joho/godotenv"
-	"github.com/google/uuid"
-	"github.com/gin-gonic/gin"
-	"github.com/aws/aws-sdk-go/aws/credentials"
+	"os/exec"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 )
 
 type ClientVideoCreationInput struct {
@@ -140,23 +142,28 @@ func createTiktokVideo(context *gin.Context, link string, voice string, gameplay
 	if err_retrieve != nil {
 		log.Fatal(err_retrieve)
 	}
-	speeche, _, comments, err := GetComments(subreddit_name, postID, voice)
+
+	// we don't need to parse the comments anymore as we are passing the speech
+	// to the assemblyai api
+	speeche, _, _, err := GetComments(subreddit_name, postID, voice)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	parsed_comments := splitEveryNWords(comments, 3)
-	subtitles_path, err := createSubtitlesFile("../merging_files/subtitles.srt", parsed_comments)
-	if err != nil {
-		log.Fatal(err)
-	}
+	//parsed_comments := splitEveryNWords(comments, 1)
 
 	gameplay_v_a, err := CutVideoAddAudio(fmt.Sprintf("../merging_files/%s", gameplay_path), speeche)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	video_local_path, err := BurnSubtitles(gameplay_v_a, subtitles_path)
+	cmd := exec.Command("python3", "createComments.py")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Failed to run the Python script: %s\nError: %s", output, err)
+	}
+
+	video_local_path, err := BurnSubtitles(gameplay_v_a, "../merging_files/subtitles.srt")
 
 	fmt.Println("Now starting the Upload to the s3 bucket")
 
@@ -206,11 +213,16 @@ func main() {
 	router.Static("/favicon.png", "../svelte-app/public/favicon.png")
 	router.Static("/assets", "../svelte-app/public/assets/")
 
+	/* There is problem: Routing doesn't work as intended, it does go to /create but stays on the same page
+		Look up tutorial on how to handle routing with svelte and Gin. URGENT */
+
+	router.POST("/createVideo", CreateVideoHandler)
+
 	router.GET("/", func(c *gin.Context) {
 		c.File("../svelte-app/public/index.html")
 	})
 
-	router.POST("/createVideo", CreateVideoHandler)
+
 	router.Run("localhost:8080")
 }
 
