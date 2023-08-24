@@ -4,7 +4,9 @@
 /.metadata/
 /ignore/*
 /DS_Store
-/go-backend/go.*
+/app.yaml
+/.gcloud*
+/go.*
 /subtitles.srt
 /.DS_Store
 /example.gif
